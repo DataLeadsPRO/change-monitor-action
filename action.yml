@@ -1,0 +1,30 @@
+name: 'DataLeads Change Monitor'
+description: 'Check a URL for changes since its last snapshot and return the diff report as JSON.'
+inputs:
+  url:
+    description: 'Target URL'
+    required: true
+  api_key:
+    description: 'DataLeads client key (get one at https://data.dataleads.pro)'
+    required: true
+outputs:
+  result:
+    description: 'Raw JSON response from the API'
+    value: ${{ steps.call.outputs.result }}
+runs:
+  using: 'composite'
+  steps:
+    - id: call
+      shell: bash
+      env:
+        INPUT_APIKEY: ${{ inputs.api_key }}
+        INPUT_URL: ${{ inputs.url }}
+      run: |
+        body="{\"clientKey\":\"$INPUT_APIKEY\",\"url\":\"$INPUT_URL\"}"
+        resp=$(curl -s -X POST https://data.dataleads.pro/v1/diff -H 'Content-Type: application/json' -d "$body")
+        echo "$resp" > dataleads-result.json
+        single=$(printf '%s' "$resp" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
+        echo "result=$single" >> "$GITHUB_OUTPUT"
+branding:
+  icon: 'eye'
+  color: 'indigo'
